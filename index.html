@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h2>Criptografia Assimétrica com RSA</h2>
+  
+    <div id="principal">
+      <!-- Div de Geração de Chaves -->
+      <div id="div1">
+        <label for="keySizeSelect">Tamanho da chave RSA:</label>
+        <select id="keySizeSelect" onchange="showKeySizeWarning()">
+          <option value="512">512 bits (Inseguro)</option>
+          <option value="1024">1024 bits (Fraco)</option>
+          <option value="2048" selected>2048 bits (Recomendado)</option>
+        </select>
+        <p id="keySizeWarning" style="color: green; font-weight: bold;">2048 bits é o tamanho ideal para segurança.</p>
+        <button onclick="generateRSAKeys()">Gerar Par de Chaves</button>
+        <label>Chave Pública:</label>
+        <textarea id="publicKeyOutput" readonly></textarea>
+        <label>Chave Privada:</label>
+        <textarea id="privateKeyOutput" readonly></textarea>
+      </div>
+  
+      <!-- Div de Criptografia -->
+      <div id="div2">
+        <label for="rsaPlainText">Texto para criptografar:</label>
+        <textarea id="rsaPlainText" placeholder="Digite o texto"></textarea>
+        <button onclick="rsaEncrypt()">Criptografar</button>
+        <label for="rsaEncryptedText">Texto criptografado:</label>
+        <textarea id="rsaEncryptedText" readonly></textarea>
+        <button onclick="rsaDecrypt()">Descriptografar</button>
+        <label for="rsaDecryptedText">Texto descriptografado:</label>
+        <textarea id="rsaDecryptedText" readonly></textarea>
+      </div>
+    </div>
+  
+    
+<script src="script.js"></script>
+</body>
