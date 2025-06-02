@@ -3,42 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="style.css">
+    <title>RSA Encryption Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.8.6/jsrsasign-all-min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <h2>Criptografia Assimétrica com RSA</h2>
-  
-    <div id="principal">
-      <!-- Div de Geração de Chaves -->
-      <div id="div1">
-        <label for="keySizeSelect">Tamanho da chave RSA:</label>
-        <select id="keySizeSelect" onchange="showKeySizeWarning()">
-          <option value="2048">2048 bits</option>
-          <option value="3072">3072 bits</option>
-          <option value="4096">4096 bits</option>
-        </select>
-        <div id="keySizeWarning" style="margin-top: 8px;"></div>
-        <button onclick="generateRSAKeys()">Gerar Par de Chaves</button>
-        <label>Chave Pública:</label>
-        <textarea placeholder="Chave pública (Base64)" id="publicKeyOutput"></textarea>
-        <label>Chave Privada:</label>
-        <textarea placeholder="Chave privada (Base64)" id="privateKeyOutput"></textarea>
-      </div>
-  
-      <!-- Div de Criptografia -->
-      <div id="div2">
-        <label for="rsaPlainText">Texto para criptografar:</label>
-        <textarea id="rsaPlainText" placeholder="Digite o texto"></textarea>
-        <button onclick="rsaEncrypt()">Criptografar</button>
-        <label for="rsaEncryptedText">Texto criptografado:</label>
-        <textarea id="rsaEncryptedText" readonly></textarea>
-        <button onclick="rsaDecrypt()">Descriptografar</button>
-        <label for="rsaDecryptedText">Texto descriptografado:</label>
-        <textarea id="rsaDecryptedText" readonly></textarea>
-      </div>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="max-w-4xl w-full bg-white shadow-lg rounded-lg p-6">
+        <h1 class="text-3xl font-bold text-center mb-6">RSA Encryption Demo</h1>
+
+        <!-- Key Generation Section -->
+        <div class="mb-8">
+            <button id="generateKeys" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4">Generate Keys</button>
+            <div class="flex flex-col md:flex-row gap-4">
+              <div class="relative flex-1">
+                  <label class="block text-sm font-medium">Public Key</label>
+                  <textarea id="publicKey" class="w-full h-24 p-2 border rounded mt-1" readonly>
+                  </textarea>
+                  <button onclick="copyToClipboard('publicKey')" class="top-7 right-2 bg-gray-200 text-sm px-2 py-1 rounded hover:bg-gray-300">
+                    Copy
+                  </button>                
+              </div>
+              <div class="relative flex-1">
+                  <label class="block text-sm font-medium">Private Key</label>
+                  <textarea id="privateKey" class="w-full h-24 p-2 border rounded mt-1" readonly></textarea>
+                  <button onclick="copyToClipboard('privateKey')" class=" top-7 right-2 bg-gray-200 text-sm px-2 py-1 rounded hover:bg-gray-300">
+                    Copy
+                  </button> 
+              </div>
+
+            </div>
+        </div>
+
+        <!-- Encryption Section -->
+        <div class="mb-8">
+            <h2 class="text-xl font-semibold mb-4">Encrypt Message</h2>
+            <div class="mb-4">
+                <label class="block text-sm font-medium">Public Key</label>
+                <textarea id="encryptPublicKey" class="w-full h-24 p-2 border rounded mt-1" placeholder="Paste public key here"></textarea>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium">Plain Text</label>
+                <textarea id="plainText" class="w-full h-24 p-2 border rounded mt-1" placeholder="Enter text to encrypt"></textarea>
+            </div>
+            <button id="encryptButton" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Encrypt</button>
+            <div class="mt-4">
+                <label class="block text-sm font-medium">Encrypted Text</label>
+                <textarea id="encryptedText" class="w-full h-24 p-2 border rounded mt-1" readonly></textarea>
+                <button onclick="copyToClipboard('encryptedText')" class=" top-7 right-2 bg-gray-200 text-sm px-2 py-1 rounded hover:bg-gray-300">
+                  Copy
+                </button> 
+            </div>
+        </div>
+
+        <!-- Decryption Section -->
+        <div>
+            <h2 class="text-xl font-semibold mb-4">Decrypt Message</h2>
+            <div class="mb-4">
+                <label class="block text-sm font-medium">Private Key</label>
+                <textarea id="decryptPrivateKey" class="w-full h-24 p-2 border rounded mt-1" placeholder="Paste private key here"></textarea>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium">Encrypted Text</label>
+                <textarea id="decryptText" class="w-full h-24 p-2 border rounded mt-1" placeholder="Paste encrypted text here"></textarea>
+            </div>
+            <button id="decryptButton" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Decrypt</button>
+            <div class="mt-4">
+                <label class="block text-sm font-medium">Decrypted Text</label>
+                <textarea id="decryptedText" class="w-full h-24 p-2 border rounded mt-1" readonly></textarea>
+                <button onclick="copyToClipboard('decryptedText')" class=" top-7 right-2 bg-gray-200 text-sm px-2 py-1 rounded hover:bg-gray-300">
+                  Copy
+                </button>
+            </div>
+        </div>
     </div>
-  
-    
-<script src="script.js"></script>
+    <div id="toast" class="fixed bottom-5 right-5 bg-black text-white text-sm px-4 py-2 rounded shadow-lg opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
+
+    <script>
+          function copyToClipboard(id) {
+            const textarea = document.getElementById(id);
+            textarea.select();
+            textarea.setSelectionRange(0, 99999); // For mobile
+
+            navigator.clipboard.writeText(textarea.value)
+                .then(() => showToast('Copied to clipboard!'))
+                .catch(err => showToast('Copy failed: ' + err));
+          }
+
+          function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 2000); // Toast lasts 2 seconds
+          }
+        // Generate RSA Key Pair
+        document.getElementById('generateKeys').addEventListener('click', () => {
+            try {
+                const keyPair = KEYUTIL.generateKeypair('RSA', 2048);
+                const publicKey = KEYUTIL.getPEM(keyPair.pubKeyObj);
+                const privateKey = KEYUTIL.getPEM(keyPair.prvKeyObj, 'PKCS8PRV');
+                document.getElementById('publicKey').value = publicKey;
+                document.getElementById('privateKey').value = privateKey;
+            } catch (e) {
+                alert('Error generating keys: ' + e.message);
+            }
+        });
+
+        // Encrypt Message
+        document.getElementById('encryptButton').addEventListener('click', () => {
+            try {
+                const publicKeyPem = document.getElementById('encryptPublicKey').value;
+                const plainText = document.getElementById('plainText').value;
+                if (!publicKeyPem || !plainText) {
+                    alert('Please provide both public key and plain text.');
+                    return;
+                }
+                const publicKey = KEYUTIL.getKey(publicKeyPem);
+                const encrypted = KJUR.crypto.Cipher.encrypt(plainText, publicKey, 'RSA');
+                document.getElementById('encryptedText').value = encrypted;
+            } catch (e) {
+                alert('Encryption error: ' + e.message);
+            }
+        });
+
+        // Decrypt Message
+        document.getElementById('decryptButton').addEventListener('click', () => {
+            try {
+                const privateKeyPem = document.getElementById('decryptPrivateKey').value;
+                const encryptedText = document.getElementById('decryptText').value;
+                if (!privateKeyPem || !encryptedText) {
+                    alert('Please provide both private key and encrypted text.');
+                    return;
+                }
+                const privateKey = KEYUTIL.getKey(privateKeyPem);
+                const decrypted = KJUR.crypto.Cipher.decrypt(encryptedText, privateKey, 'RSA');
+                document.getElementById('decryptedText').value = decrypted;
+            } catch (e) {
+                alert('Decryption error: ' + e.message);
+            }
+        });
+    </script>
 </body>
+</html>
