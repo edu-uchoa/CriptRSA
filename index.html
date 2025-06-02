@@ -14,16 +14,16 @@
       <div id="div1">
         <label for="keySizeSelect">Tamanho da chave RSA:</label>
         <select id="keySizeSelect" onchange="showKeySizeWarning()">
-          <option value="512">512 bits (Inseguro)</option>
-          <option value="1024">1024 bits (Fraco)</option>
-          <option value="2048" selected>2048 bits (Recomendado)</option>
+          <option value="2048">2048 bits</option>
+          <option value="3072">3072 bits</option>
+          <option value="4096">4096 bits</option>
         </select>
-        <p id="keySizeWarning" style="color: green; font-weight: bold;">2048 bits é o tamanho ideal para segurança.</p>
+        <div id="keySizeWarning" style="margin-top: 8px;"></div>
         <button onclick="generateRSAKeys()">Gerar Par de Chaves</button>
         <label>Chave Pública:</label>
-        <textarea id="publicKeyOutput" readonly></textarea>
+        <textarea placeholder="Chave pública (Base64)" id="publicKeyOutput"></textarea>
         <label>Chave Privada:</label>
-        <textarea id="privateKeyOutput" readonly></textarea>
+        <textarea placeholder="Chave privada (Base64)" id="privateKeyOutput"></textarea>
       </div>
   
       <!-- Div de Criptografia -->

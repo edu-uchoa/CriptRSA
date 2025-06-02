@@ -1,95 +1,216 @@
-// global variables to public and private keys
-let rsaPublicKey, rsaPrivateKey;
+// Variáveis globais para chaves e originais em Base64
+let rsaPublicKey = null;
+let rsaPrivateKey = null;
+let originalPublicKeyBase64 = "";
+let originalPrivateKeyBase64 = "";
 
-// function for user to choose size of the key 
-function showKeySizeWarning() {
-    const size = parseInt(document.getElementById("keySizeSelect").value);
-    const warning = document.getElementById("keySizeWarning");
+// Atualiza a chave pública a partir do Base64 digitado/colado pelo usuário
+async function updatePublicKeyFromInput() {
+  const base64Pub = document.getElementById("publicKeyOutput").value.trim();
+  if (!base64Pub) {
+    rsaPublicKey = null;
+    document.getElementById("publicKeyOutput").style.borderColor = "";
+    return;
+  }
+  try {
+    const binaryDer = Uint8Array.from(atob(base64Pub), c => c.charCodeAt(0));
+    rsaPublicKey = await window.crypto.subtle.importKey(
+      "spki",
+      binaryDer.buffer,
+      {
+        name: "RSA-OAEP",
+        hash: "SHA-256"
+      },
+      true,
+      ["encrypt"]
+    );
 
-    if (size === 512) {
-        warning.textContent = "⚠️ 512 bits é inseguro! Use apenas para testes.";
-        warning.style.color = "red";
-    } else if (size === 1024) {
-        warning.textContent = "⚠️ 1024 bits é fraco. Evite para dados sensíveis.";
-        warning.style.color = "orange";
-    } else if (size === 2048) {
-        warning.textContent = "✅ 2048 bits é o tamanho ideal para segurança.";
-        warning.style.color = "green";
+    // Validar se chave corresponde à original
+    if (base64Pub === originalPublicKeyBase64) {
+      document.getElementById("publicKeyOutput").style.borderColor = "green";
+    } else {
+      document.getElementById("publicKeyOutput").style.borderColor = "orange"; // chave diferente da original
     }
+  } catch (e) {
+    rsaPublicKey = null;
+    document.getElementById("publicKeyOutput").style.borderColor = "red";
+    console.error("Chave pública inválida:", e);
+  }
 }
 
+// Atualiza a chave privada a partir do Base64 digitado/colado pelo usuário
+async function updatePrivateKeyFromInput() {
+  const base64Priv = document.getElementById("privateKeyOutput").value.trim();
+  if (!base64Priv) {
+    rsaPrivateKey = null;
+    document.getElementById("privateKeyOutput").style.borderColor = "";
+    return;
+  }
+  try {
+    const binaryDer = Uint8Array.from(atob(base64Priv), c => c.charCodeAt(0));
+    rsaPrivateKey = await window.crypto.subtle.importKey(
+      "pkcs8",
+      binaryDer.buffer,
+      {
+        name: "RSA-OAEP",
+        hash: "SHA-256"
+      },
+      true,
+      ["decrypt"]
+    );
+
+    // Validar se chave corresponde à original
+    if (base64Priv === originalPrivateKeyBase64) {
+      document.getElementById("privateKeyOutput").style.borderColor = "green";
+    } else {
+      document.getElementById("privateKeyOutput").style.borderColor = "orange"; // chave diferente da original
+    }
+  } catch (e) {
+    rsaPrivateKey = null;
+    document.getElementById("privateKeyOutput").style.borderColor = "red";
+    console.error("Chave privada inválida:", e);
+  }
+}
+
+// Função para mostrar aviso do tamanho da chave
+function showKeySizeWarning() {
+  const size = parseInt(document.getElementById("keySizeSelect").value);
+  const warning = document.getElementById("keySizeWarning");
+
+  if (size === 2048) {
+    warning.textContent = "✅ 2048 bits é o tamanho ideal para segurança.";
+    warning.style.color = "green";
+  } else if (size === 3072) {
+    warning.textContent = "🔒 3072 bits oferece segurança extra para longo prazo.";
+    warning.style.color = "darkgreen";
+  } else if (size === 4096) {
+    warning.textContent = "🛡️ 4096 bits é muito seguro, porém mais lento.";
+    warning.style.color = "blue";
+  }
+}
+
+// Função para gerar par de chaves RSA
 async function generateRSAKeys() {
-    
-    const keySize = parseInt(document.getElementById("keySizeSelect").value);
+  const keySize = parseInt(document.getElementById("keySizeSelect").value);
 
-    // Generate an RSA-OAEP key pair using userchoice-bit modulus and SHA-256 as the hash algorithm
-    const keyPair = await window.crypto.subtle.generateKey(
-        {
-            name: "RSA-OAEP",                // Algorithm for encryption/decryption
-            modulusLength: keySize,             // Key size: 2048 bits (standard and secure)
-            publicExponent: new Uint8Array([1, 0, 1]), // Common public exponent (65537)
-            hash: "SHA-256"                  // Hash function used with OAEP padding
-        },
-        true,                                // Keys are exportable (can be converted to text)
-        ["encrypt", "decrypt"]              // The key pair will be used for both encryption and decryption
-    );
+  if (![2048, 3072, 4096].includes(keySize)) {
+    alert("⚠️ Tamanho de chave inválido.");
+    return;
+  }
 
-    // Save the generated keys into global variables
-    rsaPublicKey = keyPair.publicKey;
-    rsaPrivateKey = keyPair.privateKey;
+  const keyPair = await window.crypto.subtle.generateKey(
+    {
+      name: "RSA-OAEP",
+      modulusLength: keySize,
+      publicExponent: new Uint8Array([1, 0, 1]),
+      hash: "SHA-256"
+    },
+    true,
+    ["encrypt", "decrypt"]
+  );
 
-    // Export the public key in SPKI (SubjectPublicKeyInfo) format
-    const exportedPub = await window.crypto.subtle.exportKey("spki", rsaPublicKey);
-    
-    // Export the private key in PKCS#8 format
-    const exportedPriv = await window.crypto.subtle.exportKey("pkcs8", rsaPrivateKey);
+  rsaPublicKey = keyPair.publicKey;
+  rsaPrivateKey = keyPair.privateKey;
 
-    // Convert the exported public key from binary (ArrayBuffer) to Base64 string
-    document.getElementById("publicKeyOutput").value = 
-        btoa(String.fromCharCode(...new Uint8Array(exportedPub)));
+  const exportedPub = await window.crypto.subtle.exportKey("spki", rsaPublicKey);
+  const exportedPriv = await window.crypto.subtle.exportKey("pkcs8", rsaPrivateKey);
 
-    // Convert the exported private key from binary (ArrayBuffer) to Base64 string
-    document.getElementById("privateKeyOutput").value = 
-        btoa(String.fromCharCode(...new Uint8Array(exportedPriv)));
+  originalPublicKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedPub)));
+  originalPrivateKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedPriv)));
+
+  document.getElementById("publicKeyOutput").value = originalPublicKeyBase64;
+  document.getElementById("privateKeyOutput").value = originalPrivateKeyBase64;
+
+  // Reset border colors (chaves agora são originais e válidas)
+  document.getElementById("publicKeyOutput").style.borderColor = "green";
+  document.getElementById("privateKeyOutput").style.borderColor = "green";
 }
 
+// Função para criptografar
 async function rsaEncrypt() {
-    // Get the plaintext message from the input field
-    const plaintext = document.getElementById("rsaPlainText").value;
+  const publicKeyTextarea = document.getElementById("publicKeyOutput");
+  const publicKeyText = publicKeyTextarea.value.trim();
 
-    // Create a TextEncoder to convert the string to a Uint8Array (binary)
-    const encoder = new TextEncoder();
+  if (publicKeyText === "") {
+    alert("❗ Geração de chave necessária antes da criptografia.");
+    return;
+  }
 
-    // Encrypt the encoded plaintext using the public key and RSA-OAEP
+  if (publicKeyText !== originalPublicKeyBase64) {
+    alert("❗ Chave pública incorreta necessária antes da criptografia.");
+    return;
+  }
+
+  if (!rsaPublicKey) {
+    alert("❗ Chave pública inválida.");
+    return;
+  }
+
+  const plaintext = document.getElementById("rsaPlainText").value;
+  const encoder = new TextEncoder();
+
+  try {
     const encrypted = await window.crypto.subtle.encrypt(
-        { name: "RSA-OAEP" },      // Must match the key algorithm
-        rsaPublicKey,              // Use the previously generated public key
-        encoder.encode(plaintext)  // Convert string to binary before encryption
+      { name: "RSA-OAEP" },
+      rsaPublicKey,
+      encoder.encode(plaintext)
     );
 
-    // Convert the encrypted ArrayBuffer to Base64 string and display it
-    document.getElementById("rsaEncryptedText").value = 
-        btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+    document.getElementById("rsaEncryptedText").value =
+      btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+  } catch (e) {
+    alert("Erro durante a criptografia: " + e.message);
+  }
 }
 
-
+// Função para descriptografar
 async function rsaDecrypt() {
-    // Get the encrypted text (in Base64 format) from the input field
-    const encryptedText = document.getElementById("rsaEncryptedText").value;
+  const privateKeyTextarea = document.getElementById("privateKeyOutput");
+  const privateKeyText = privateKeyTextarea.value.trim();
 
-    // Decode the Base64 text back into binary (Uint8Array)
+  if (privateKeyText === "") {
+    alert("❗ Geração de chave necessária antes da descriptografia.");
+    return;
+  }
+
+  if (privateKeyText !== originalPrivateKeyBase64) {
+    alert("❗ Chave privada incorreta necessária antes da descriptografia.");
+    return;
+  }
+
+  if (!rsaPrivateKey) {
+    alert("❗ Chave privada inválida.");
+    return;
+  }
+
+  const encryptedText = document.getElementById("rsaEncryptedText").value;
+  if (!encryptedText) {
+    alert("❗ Informe o texto criptografado para descriptografar.");
+    return;
+  }
+
+  try {
     const encryptedBytes = new Uint8Array(
-        [...atob(encryptedText)].map(c => c.charCodeAt(0))
+      [...atob(encryptedText)].map(c => c.charCodeAt(0))
     );
 
-    // Decrypt the binary data using the private key and RSA-OAEP
     const decrypted = await window.crypto.subtle.decrypt(
-        { name: "RSA-OAEP" },   // Must match the key algorithm
-        rsaPrivateKey,          // Use the previously generated private key
-        encryptedBytes          // The encrypted message in binary format
+      { name: "RSA-OAEP" },
+      rsaPrivateKey,
+      encryptedBytes
     );
 
-    // Convert the decrypted binary data back to a string
     const decoder = new TextDecoder();
     document.getElementById("rsaDecryptedText").value = decoder.decode(decrypted);
+  } catch (e) {
+    alert("Erro durante a descriptografia: " + e.message);
+  }
 }
+
+// Event listeners para atualizar as chaves quando o usuário altera as textareas
+document.getElementById("publicKeyOutput").addEventListener("input", () => {
+  updatePublicKeyFromInput();
+});
+document.getElementById("privateKeyOutput").addEventListener("input", () => {
+  updatePrivateKeyFromInput();
+});
